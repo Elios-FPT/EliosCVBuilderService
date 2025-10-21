@@ -1,6 +1,5 @@
 ﻿using Confluent.Kafka;
 using CVBuilder.Core.Interfaces;
-using CVBuilder.Infrastructure.Implementations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
