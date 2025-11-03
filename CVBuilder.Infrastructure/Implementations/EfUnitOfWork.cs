@@ -1,7 +1,7 @@
-﻿using CVBuilder.Core.Interfaces;
-using CVBuilder.Infrastructure.DataContext;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using CVBuilder.Core.Interfaces;
+using CVBuilder.Infrastructure.DataContext;
 using System;
 using System.Threading.Tasks;
 
@@ -15,15 +15,6 @@ namespace CVBuilder.Infrastructure.Implementations
         public EfUnitOfWork(CVBuilderDataContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
-
-            // Close transaction if another transaction existed
-            var currentTransaction = _context.Database.CurrentTransaction;
-            if (currentTransaction != null)
-            {
-                currentTransaction.Dispose();
-            }
-
-            // Begin new transaction 
             _transaction = _context.Database.BeginTransaction();
         }
 

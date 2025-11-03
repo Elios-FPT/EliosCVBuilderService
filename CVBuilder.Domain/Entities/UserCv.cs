@@ -11,10 +11,14 @@ namespace Elios.CVBuilder.Domain.Models
     {
         public Guid UserId { get; set; }      
         public Guid TemplateId { get; set; }
-        public string Title { get; set; } = default!;
+        public string ResumeTitle { get; set; } = default!;
+        public TemplateCv Template { get; set; } = default!;
+        public PersonalInfo? PersonalInfo { get; set; }
+        public ICollection<ExperienceItem> ExperienceItems { get; set; } = new List<ExperienceItem>();
+        public ICollection<ProjectItem> ProjectItems { get; set; } = new List<ProjectItem>();
+        public ICollection<EducationItem> EducationItems { get; set; } = new List<EducationItem>();
+        public SkillSet? SkillSet { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-
-        public TemplateCv Template { get; set; } = default!;
     }
 }

@@ -1,11 +1,5 @@
 ﻿using CVBuilder.Contract.TransferObjects;
 using CVBuilder.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CVBuilder.Core.Extensions
 {
@@ -46,7 +40,7 @@ namespace CVBuilder.Core.Extensions
                 Id = userCv.Id,
                 UserId = userCv.UserId,
                 TemplateId = userCv.TemplateId,
-                Title = userCv.Title,
+                Title = userCv.ResumeTitle,
                 CreatedAt = userCv.CreatedAt,
                 UpdatedAt = userCv.UpdatedAt,
                 Template = userCv.Template?.ToDto()

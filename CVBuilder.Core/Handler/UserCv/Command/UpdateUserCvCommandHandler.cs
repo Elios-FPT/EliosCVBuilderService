@@ -37,7 +37,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 return new BaseResponseDto<UserCvDto>
                 {
                     Status = 400,
-                    Message = "Title cannot be null or empty.",
+                    Message = "ResumeTitle cannot be null or empty.",
                     ResponseData = null
                 };
             }
@@ -61,7 +61,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 using var transaction = await _userCvRepository.BeginTransactionAsync();
                 try
                 {
-                    existingUserCv.Title = request.Title;
+                    existingUserCv.ResumeTitle = request.Title;
                     existingUserCv.UpdatedAt = DateTime.UtcNow;
 
                     await _userCvRepository.UpdateAsync(existingUserCv);

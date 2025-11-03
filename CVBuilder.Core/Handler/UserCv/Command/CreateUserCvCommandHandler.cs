@@ -50,7 +50,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 return new BaseResponseDto<UserCvDto>
                 {
                     Status = 400,
-                    Message = "Title cannot be null or empty.",
+                    Message = "ResumeTitle cannot be null or empty.",
                     ResponseData = null
                 };
             }
@@ -77,7 +77,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                         Id = Guid.NewGuid(),
                         UserId = request.UserId,
                         TemplateId = request.TemplateId,
-                        Title = request.Title,
+                        ResumeTitle = request.Title,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = null
                     };
