@@ -40,7 +40,7 @@ namespace CVBuilder.Core.Extensions
                 Id = userCv.Id,
                 UserId = userCv.UserId,
                 TemplateId = userCv.TemplateId,
-                Title = userCv.Title,
+                Title = userCv.ResumeTitle,
                 CreatedAt = userCv.CreatedAt,
                 UpdatedAt = userCv.UpdatedAt,
                 Template = userCv.Template?.ToDto()

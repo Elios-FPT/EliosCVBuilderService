@@ -86,13 +86,13 @@ namespace CVBuilder.Test
             var request = new CreateUserCvRequest(
                 UserId: Guid.NewGuid(),
                 TemplateId: Guid.NewGuid(),
-                Title: null // Title is required, should cause validation error
+                Title: null // ResumeTitle is required, should cause validation error
             );
 
             var expectedResponse = new BaseResponseDto<UserCvDto>
             {
                 Status = 400,
-                Message = "Title cannot be null or empty.",
+                Message = "ResumeTitle cannot be null or empty.",
                 ResponseData = null
             };
 
@@ -104,7 +104,7 @@ namespace CVBuilder.Test
 
             // Assert
             Assert.Equal(400, result.Status);
-            Assert.Equal("Title cannot be null or empty.", result.Message);
+            Assert.Equal("ResumeTitle cannot be null or empty.", result.Message);
             Assert.Null(result.ResponseData);
             _senderMock.Verify(s => s.Send(It.Is<CreateUserCvCommand>(cmd =>
                 cmd.Title == null), It.IsAny<CancellationToken>()), Times.Once());

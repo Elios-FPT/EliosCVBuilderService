@@ -69,7 +69,7 @@ namespace CVBuilder.Infrastructure.Migrations
                     b.Property<Guid>("TemplateId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Title")
+                    b.Property<string>("ResumeTitle")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");

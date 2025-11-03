@@ -37,7 +37,7 @@ namespace CVBuilder.Infrastructure.DataContext
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.UserId).IsRequired();
                 entity.Property(e => e.TemplateId).IsRequired();
-                entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.ResumeTitle).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.Property(e => e.UpdatedAt);
 
