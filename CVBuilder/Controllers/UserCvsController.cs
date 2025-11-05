@@ -144,10 +144,10 @@ namespace CVBuilder.Web.Controllers
         /// </pre>
         /// </remarks>
         /// <param name="id">The unique identifier of the user CV to update.</param>
-        /// <param name="request">A <see cref="UpdateUserCvRequestV2"/> object containing the updated user CV details.</param>
+        /// <param name="request">A JSON object containing the updated user CV details.</param>
         /// <returns>
-        /// → <seealso cref="UpdateUserCvCommandV2" /><br/>
-        /// → <seealso cref="UpdateUserCvCommandV2Handler" /><br/>
+        /// → <seealso cref="UpdateUserCvCommand" /><br/>
+        /// → <seealso cref="UpdateUserCvCommandHandler" /><br/>
         /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the updated user CV.<br/>
         /// </returns>
         /// <response code="200">User CV updated successfully.</response>
@@ -162,15 +162,15 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] UpdateUserCvRequestV2 request)
+        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] JsonElement request)
         {
-            var command = new UpdateUserCvCommandV2(
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid ownerId = Guid.Parse(userIdHeader);
+            var Body = System.Text.Json.JsonSerializer.Serialize(request);
+            var command = new UpdateUserCvCommand(
                 Id: id,
-                PersonalInfo: request.PersonalInfo,
-                Experience: request.Experience,
-                Projects: request.Projects,
-                Education: request.Education,
-                Skillsets: request.Skillsets);
+                OwnerId: ownerId,
+                Body: Body);
             return await _sender.Send(command);
         }
 
