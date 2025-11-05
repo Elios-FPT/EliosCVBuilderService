@@ -10,7 +10,6 @@ namespace Elios.CVBuilder.Domain.Models
     public class PersonalInfo : BaseEntity
     {
         public Guid UserCvId { get; set; }
-        public string SectionId { get; set; } = "personalInfo";
         public string Title { get; set; } = "Personal Info";
         public string FirstName { get; set; } = default!;
         public string LastName { get; set; } = default!;
@@ -18,6 +17,8 @@ namespace Elios.CVBuilder.Domain.Models
         public string Phone { get; set; } = default!;
         public string Address { get; set; } = default!;
         public string JobTitle { get; set; } = default!;
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public UserCv UserCv { get; set; } = default!;

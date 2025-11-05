@@ -12,6 +12,8 @@ namespace Elios.CVBuilder.Domain.Models
         public Guid PersonalInfoId { get; set; }
         public string Name { get; set; } = default!;
         public string Url { get; set; } = default!;
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public PersonalInfo PersonalInfo { get; set; } = default!;

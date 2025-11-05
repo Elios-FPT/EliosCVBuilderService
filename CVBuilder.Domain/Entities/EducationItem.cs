@@ -18,6 +18,8 @@ namespace Elios.CVBuilder.Domain.Models
         public string Grad { get; set; } = default!;
         public string? Gpa { get; set; }
         public int OrderIndex { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public UserCv UserCv { get; set; } = default!;

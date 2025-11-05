@@ -18,6 +18,8 @@ namespace Elios.CVBuilder.Domain.Models
         public string? GithubUrl { get; set; }
         public string? LiveUrl { get; set; }
         public int OrderIndex { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public UserCv UserCv { get; set; } = default!;

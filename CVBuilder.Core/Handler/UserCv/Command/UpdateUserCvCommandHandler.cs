@@ -60,7 +60,9 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 using var transaction = await _userCvRepository.BeginTransactionAsync();
                 try
                 {
-                    existingUserCv.ResumeTitle = request.Title;
+                    // Update Title in JSON body if needed
+                    // For now, just update UpdatedAt timestamp
+                    // If Title update is needed, deserialize Body, update PersonalInfo.Title, and re-serialize
                     existingUserCv.UpdatedAt = DateTime.UtcNow;
 
                     await _userCvRepository.UpdateAsync(existingUserCv);

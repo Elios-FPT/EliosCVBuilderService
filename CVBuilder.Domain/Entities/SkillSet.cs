@@ -10,8 +10,9 @@ namespace Elios.CVBuilder.Domain.Models
     public class SkillSet : BaseEntity
     {
         public Guid UserCvId { get; set; }
-        public string SectionId { get; set; } = "skillsets";
         public string Title { get; set; } = "Skillsets";
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public UserCv UserCv { get; set; } = default!;
