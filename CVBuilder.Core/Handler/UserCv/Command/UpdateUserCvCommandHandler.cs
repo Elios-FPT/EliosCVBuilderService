@@ -1,10 +1,9 @@
 using CVBuilder.Contract.Message;
 using CVBuilder.Contract.Shared;
 using CVBuilder.Contract.TransferObjects;
-using CVBuilder.Core.Extensions;
 using CVBuilder.Core.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
@@ -32,12 +31,12 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 };
             }
 
-            if (string.IsNullOrWhiteSpace(request.Title))
+            if (string.IsNullOrWhiteSpace(request.Body))
             {
                 return new BaseResponseDto<UserCvDto>
                 {
                     Status = 400,
-                    Message = "ResumeTitle cannot be null or empty.",
+                    Message = "Body is required.",
                     ResponseData = null
                 };
             }
@@ -45,8 +44,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             try
             {
                 var existingUserCv = await _userCvRepository.GetOneAsync(
-                    filter: uc => uc.Id == request.Id,
-                    include: q => q.Include(uc => uc.Template));
+                    filter: uc => uc.Id == request.Id);
 
                 if (existingUserCv == null)
                 {
@@ -61,7 +59,8 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 using var transaction = await _userCvRepository.BeginTransactionAsync();
                 try
                 {
-                    existingUserCv.ResumeTitle = request.Title;
+                    // Update Body with new JSON string
+                    existingUserCv.Body = request.Body;
                     existingUserCv.UpdatedAt = DateTime.UtcNow;
 
                     await _userCvRepository.UpdateAsync(existingUserCv);
@@ -71,7 +70,6 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                     {
                         Status = 200,
                         Message = "User CV updated successfully.",
-                        ResponseData = existingUserCv.ToDto()
                     };
                 }
                 catch

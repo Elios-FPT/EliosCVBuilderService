@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
 using static CVBuilder.Contract.UseCases.UserCv.Query;
 using static CVBuilder.Contract.UseCases.UserCv.Request;
@@ -16,8 +17,8 @@ namespace CVBuilder.Web.Controllers
     /// </summary>
     [ApiVersion(1)]
     [Produces("application/json")]
-    [ControllerName("UserCvs")]
-    [Route("api/v1/[controller]")]
+    [ControllerName("CVBuilder/UserCvs")]
+    [Route("api/cvbuilder/[controller]")]
     public class UserCvsController : ControllerBase
     {
         private readonly ISender _sender;
@@ -38,8 +39,8 @@ namespace CVBuilder.Web.Controllers
         /// </remarks>
         /// <param name="request">A <see cref="CreateUserCvRequest"/> object containing the user CV details.</param>
         /// <returns>
-        /// → <seealso cref="CreateUserCvCommand" /><br/>
-        /// → <seealso cref="CreateUserCvCommandHandler" /><br/>
+        /// → <seealso cref="CreateUserCvCommandV2" /><br/>
+        /// → <seealso cref="CreateUserCvCommandV2Handler" /><br/>
         /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the created user CV.<br/>
         /// </returns>
         /// <response code="200">User CV created successfully.</response>
@@ -54,13 +55,14 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] CreateUserCvRequest request)
+        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] JsonElement request)
         {
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid idHeader = Guid.Parse(userIdHeader);
+            var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new CreateUserCvCommand(
-                UserId: request.UserId,
-                TemplateId: request.TemplateId,
-                Title: request.Title);
-
+                Id: idHeader,
+                Body: Body);
             return await _sender.Send(command);
         }
 
@@ -77,7 +79,7 @@ namespace CVBuilder.Web.Controllers
         /// <returns>
         /// → <seealso cref="GetUserCvByIdQuery" /><br/>
         /// → <seealso cref="GetUserCvByIdQueryHandler" /><br/>
-        /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the user CV.<br/>
+        /// → A <see cref="BaseResponseDto{JsonElement}"/> containing the user CV body (JSON object).<br/>
         /// </returns>
         /// <response code="200">User CV retrieved successfully.</response>
         /// <response code="400">The request is invalid.</response>
@@ -86,14 +88,18 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(BaseResponseDto<UserCvDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<JsonElement>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> GetUserCv([FromRoute] Guid id)
+        public async Task<BaseResponseDto<JsonElement>> GetUserCv([FromRoute] Guid id)
         {
-            var query = new GetUserCvByIdQuery(Id: id);
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid idHeader = Guid.Parse(userIdHeader);
+            var query = new GetUserCvByIdQuery(
+                IdHeader: idHeader,
+                Id: id);
             return await _sender.Send(query);
         }
 
@@ -110,7 +116,7 @@ namespace CVBuilder.Web.Controllers
         /// <returns>
         /// → <seealso cref="GetUserCvsQuery" /><br/>
         /// → <seealso cref="GetUserCvsQueryHandler" /><br/>
-        /// → A <see cref="BaseResponseDto{IEnumerable{UserCvDto}}"/> containing the user CVs.<br/>
+        /// → A <see cref="BaseResponseDto{IEnumerable{JsonElement}}"/> containing the user CV bodies (JSON objects).<br/>
         /// </returns>
         /// <response code="200">User CVs retrieved successfully.</response>
         /// <response code="400">The request is invalid.</response>
@@ -118,14 +124,16 @@ namespace CVBuilder.Web.Controllers
         /// <response code="403">The user does not have permission to access this resource.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<UserCvDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<JsonElement>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-        public async Task<BaseResponseDto<IEnumerable<UserCvDto>>> GetUserCvs([FromQuery] GetUserCvsRequest request)
+        public async Task<BaseResponseDto<IEnumerable<JsonElement>>> GetUserCvs([FromQuery] GetUserCvsRequest request)
         {
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid ownerId = Guid.Parse(userIdHeader);
             var query = new GetUserCvsQuery(
-                UserId: request.UserId,
+                UserId: ownerId,
                 PageNumber: request.PageNumber,
                 PageSize: request.PageSize);
 
@@ -142,7 +150,7 @@ namespace CVBuilder.Web.Controllers
         /// </pre>
         /// </remarks>
         /// <param name="id">The unique identifier of the user CV to update.</param>
-        /// <param name="request">A <see cref="UpdateUserCvRequest"/> object containing the updated user CV details.</param>
+        /// <param name="request">A JSON object containing the updated user CV details.</param>
         /// <returns>
         /// → <seealso cref="UpdateUserCvCommand" /><br/>
         /// → <seealso cref="UpdateUserCvCommandHandler" /><br/>
@@ -160,12 +168,15 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] UpdateUserCvRequest request)
+        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] JsonElement request)
         {
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid idHeader = Guid.Parse(userIdHeader);
+            var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new UpdateUserCvCommand(
                 Id: id,
-                Title: request.Title);
-
+                IdHeader: idHeader,
+                Body: Body);
             return await _sender.Send(command);
         }
 
@@ -198,7 +209,11 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<BaseResponseDto<bool>> DeleteUserCv([FromRoute] Guid id)
         {
-            var command = new DeleteUserCvCommand(Id: id);
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid idHeader = Guid.Parse(userIdHeader);
+            var command = new DeleteUserCvCommand(
+                IdHeader: idHeader,
+                Id: id);
             return await _sender.Send(command);
         }
     }

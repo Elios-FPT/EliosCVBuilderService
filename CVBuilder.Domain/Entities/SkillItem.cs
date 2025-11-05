@@ -21,6 +21,8 @@ namespace Elios.CVBuilder.Domain.Models
         public SkillType Type { get; set; }
         public string Name { get; set; } = default!;
         public int OrderIndex { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public SkillSet SkillSet { get; set; } = default!;

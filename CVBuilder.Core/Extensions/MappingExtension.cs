@@ -1,5 +1,6 @@
 ﻿using CVBuilder.Contract.TransferObjects;
 using CVBuilder.Domain.Entities;
+using System.Linq;
 
 namespace CVBuilder.Core.Extensions
 {
@@ -35,16 +36,18 @@ namespace CVBuilder.Core.Extensions
 
         public static UserCvDto ToDto(this Elios.CVBuilder.Domain.Models.UserCv userCv)
         {
-            return new UserCvDto
+            // Deserialize Body JSON directly to DTO
+            if (string.IsNullOrEmpty(userCv.Body))
             {
-                Id = userCv.Id,
-                UserId = userCv.UserId,
-                TemplateId = userCv.TemplateId,
-                Title = userCv.ResumeTitle,
-                CreatedAt = userCv.CreatedAt,
-                UpdatedAt = userCv.UpdatedAt,
-                Template = userCv.Template?.ToDto()
-            };
+                return null!;
+            }
+
+            return System.Text.Json.JsonSerializer.Deserialize<UserCvDto>(
+                userCv.Body, 
+                new System.Text.Json.JsonSerializerOptions 
+                { 
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase 
+                }) ?? null!;
         }
     }
 }

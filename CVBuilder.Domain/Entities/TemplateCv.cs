@@ -14,6 +14,5 @@ namespace Elios.CVBuilder.Domain.Models
         public string? ThumbnailUrl { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsDeleted { get; set; }
-        public ICollection<UserCv> UserCvs { get; set; } = new List<UserCv>();
     }
 }

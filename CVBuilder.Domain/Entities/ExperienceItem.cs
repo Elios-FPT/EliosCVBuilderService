@@ -17,6 +17,8 @@ namespace Elios.CVBuilder.Domain.Models
         public string Location { get; set; } = default!;
         public string Description { get; set; } = default!;
         public int OrderIndex { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         // Navigation properties
         public UserCv UserCv { get; set; } = default!;

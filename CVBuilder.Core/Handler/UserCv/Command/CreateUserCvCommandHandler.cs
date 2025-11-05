@@ -4,112 +4,90 @@ using CVBuilder.Contract.TransferObjects;
 using CVBuilder.Core.Extensions;
 using CVBuilder.Core.Interfaces;
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
 
 namespace CVBuilder.Core.Handler.UserCv.Command
 {
-    public class CreateUserCvCommandHandler : ICommandHandler<CreateUserCvCommand, BaseResponseDto<UserCvDto>>
-    {
-        private readonly IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> _userCvRepository;
-        private readonly IGenericRepository<Elios.CVBuilder.Domain.Models.TemplateCv> _templateRepository;
+	public class CreateUserCvCommandHandler : ICommandHandler<CreateUserCvCommand, BaseResponseDto<UserCvDto>>
+	{
+		private readonly IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> _resumeRepo;
 
-        public CreateUserCvCommandHandler(
-            IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> userCvRepository,
-            IGenericRepository<Elios.CVBuilder.Domain.Models.TemplateCv> templateRepository)
-        {
-            _userCvRepository = userCvRepository ?? throw new ArgumentNullException(nameof(userCvRepository));
-            _templateRepository = templateRepository ?? throw new ArgumentNullException(nameof(templateRepository));
-        }
+		public CreateUserCvCommandHandler(
+			IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> resumeRepo)
+		{
+			_resumeRepo = resumeRepo;
+		}
 
-        public async Task<BaseResponseDto<UserCvDto>> Handle(CreateUserCvCommand request, CancellationToken cancellationToken)
-        {
-            if (request.UserId == Guid.Empty)
-            {
-                return new BaseResponseDto<UserCvDto>
-                {
-                    Status = 400,
-                    Message = "User ID cannot be empty.",
-                    ResponseData = null
-                };
-            }
+		public async Task<BaseResponseDto<UserCvDto>> Handle(CreateUserCvCommand request, CancellationToken cancellationToken)
+		{
+			if (request.Body == null)
+			{
+				return new BaseResponseDto<UserCvDto>
+				{
+					Status = 400,
+					Message = "data is required.",
+					ResponseData = null
+				};
+			}
 
-            if (request.TemplateId == Guid.Empty)
-            {
-                return new BaseResponseDto<UserCvDto>
-                {
-                    Status = 400,
-                    Message = "Template ID cannot be empty.",
-                    ResponseData = null
-                };
-            }
+			try
+			{
+				using var uow = await _resumeRepo.BeginTransactionAsync();
+				try
+				{
+					var ownerId = request.Id;
+					
+					// Serialize entire request to JSON
+					var jsonBody = JsonSerializer.Serialize(request, new JsonSerializerOptions 
+					{ 
+						WriteIndented = false,
+						PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+					});
 
-            if (string.IsNullOrWhiteSpace(request.Title))
-            {
-                return new BaseResponseDto<UserCvDto>
-                {
-                    Status = 400,
-                    Message = "ResumeTitle cannot be null or empty.",
-                    ResponseData = null
-                };
-            }
+					var resume = new Elios.CVBuilder.Domain.Models.UserCv
+					{
+						Id = Guid.NewGuid(),
+						OwnerId = ownerId,
+						Body = jsonBody,
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow,
+						IsDeleted = false
+					};
 
-            try
-            {
-                // Validate template exists and is not deleted
-                var template = await _templateRepository.GetByIdAsync(request.TemplateId);
-                if (template == null || template.IsDeleted)
-                {
-                    return new BaseResponseDto<UserCvDto>
-                    {
-                        Status = 404,
-                        Message = "Template not found or has been deleted.",
-                        ResponseData = null
-                    };
-                }
+					await _resumeRepo.AddAsync(resume);
+					await uow.CommitAsync();
 
-                using var transaction = await _userCvRepository.BeginTransactionAsync();
-                try
-                {
-                    var userCv = new Elios.CVBuilder.Domain.Models.UserCv
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = request.UserId,
-                        TemplateId = request.TemplateId,
-                        ResumeTitle = request.Title,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = null
-                    };
+					// Deserialize Body back to DTO for response
+					var responseDto = JsonSerializer.Deserialize<UserCvDto>(jsonBody, new JsonSerializerOptions 
+					{ 
+						PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+					});
 
-                    await _userCvRepository.AddAsync(userCv);
-                    await transaction.CommitAsync();
-
-                    // Load template for response
-                    userCv.Template = template;
-
-                    return new BaseResponseDto<UserCvDto>
-                    {
-                        Status = 200,
-                        Message = "User CV created successfully.",
-                        ResponseData = userCv.ToDto()
-                    };
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                return new BaseResponseDto<UserCvDto>
-                {
-                    Status = 500,
-                    Message = $"Failed to create user CV: {ex.Message}",
-                    ResponseData = null
-                };
-            }
-        }
-    }
+					return new BaseResponseDto<UserCvDto>
+					{
+						Status = 200,
+						Message = "User CV created successfully.",
+						ResponseData = responseDto
+					};
+				}
+				catch
+				{
+					await uow.RollbackAsync();
+					throw;
+				}
+			}
+			catch (Exception ex)
+			{
+				return new BaseResponseDto<UserCvDto>
+				{
+					Status = 500,
+					Message = $"Failed to create user CV: {ex.Message}",
+					ResponseData = null
+				};
+			}
+		}
+	}
 }

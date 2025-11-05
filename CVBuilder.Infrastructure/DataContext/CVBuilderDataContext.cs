@@ -1,9 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CVBuilder.Infrastructure.DataContext
 {
@@ -20,7 +16,7 @@ namespace CVBuilder.Infrastructure.DataContext
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure TemplateCv
+            // Configure TemplateCv (separate feature, keep for template management)
             modelBuilder.Entity<Elios.CVBuilder.Domain.Models.TemplateCv>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -31,21 +27,35 @@ namespace CVBuilder.Infrastructure.DataContext
                 entity.Property(e => e.IsDeleted).IsRequired().HasDefaultValue(false);
             });
 
-            // Configure UserCv
+            // Configure UserCv - single table with JSON body storage
             modelBuilder.Entity<Elios.CVBuilder.Domain.Models.UserCv>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.UserId).IsRequired();
-                entity.Property(e => e.TemplateId).IsRequired();
-                entity.Property(e => e.ResumeTitle).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.CreatedAt).IsRequired();
+                
+                entity.Property(e => e.OwnerId)
+                    .IsRequired();
+                
+                entity.Property(e => e.Body)
+                    .IsRequired()
+                    .HasColumnType("jsonb");
+                
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired();
+                
                 entity.Property(e => e.UpdatedAt);
-
-                // Configure relationship
-                entity.HasOne(e => e.Template)
-                    .WithMany(t => t.UserCvs)
-                    .HasForeignKey(e => e.TemplateId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.Property(e => e.IsDeleted)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                
+                entity.Property(e => e.DeletedAt);
+                
+                // Index for filtering by owner
+                entity.HasIndex(e => e.OwnerId)
+                    .HasDatabaseName("IX_UserCv_OwnerId");
+                
+                // Global query filter for soft-delete
+                entity.HasQueryFilter(e => !e.IsDeleted);
             });
         }
     }
