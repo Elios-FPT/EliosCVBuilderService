@@ -77,7 +77,7 @@ namespace CVBuilder.Contract.TransferObjects
         SectionDto<SkillItemDto> Databases
     );
 
-    // Top-level DTO mirrors CreateUserCvRequestV2 / Sample_cv_body.json
+    // Top-level DTO mirrors CreateUserCvRequest / Sample_cv_body.json
     public class UserCvDto
     {
         public PersonalInfoSectionDto PersonalInfo { get; set; } = default!;

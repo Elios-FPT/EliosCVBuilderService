@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
 using static CVBuilder.Contract.UseCases.UserCv.Query;
 using static CVBuilder.Contract.UseCases.UserCv.Request;
@@ -16,8 +17,8 @@ namespace CVBuilder.Web.Controllers
     /// </summary>
     [ApiVersion(1)]
     [Produces("application/json")]
-    [ControllerName("UserCvs")]
-    [Route("api/[controller]")]
+    [ControllerName("CVBuilder/UserCvs")]
+    [Route("api/cvbuilder/[controller]")]
     public class UserCvsController : ControllerBase
     {
         private readonly ISender _sender;
@@ -36,7 +37,7 @@ namespace CVBuilder.Web.Controllers
         /// This endpoint allows authenticated users with the `usercv:write` permission to create a new user CV.
         /// </pre>
         /// </remarks>
-        /// <param name="request">A <see cref="CreateUserCvRequestV2"/> object containing the user CV details.</param>
+        /// <param name="request">A <see cref="CreateUserCvRequest"/> object containing the user CV details.</param>
         /// <returns>
         /// → <seealso cref="CreateUserCvCommandV2" /><br/>
         /// → <seealso cref="CreateUserCvCommandV2Handler" /><br/>
@@ -54,14 +55,14 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] CreateUserCvRequestV2 request)
+        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] JsonElement request)
         {
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid id = Guid.Parse(userIdHeader);
+            var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new CreateUserCvCommand(
-                PersonalInfo: request.PersonalInfo,
-                Experience: request.Experience,
-                Projects: request.Projects,
-                Education: request.Education,
-                Skillsets: request.Skillsets);
+                Id: id,
+                Body: Body);
             return await _sender.Send(command);
         }
 

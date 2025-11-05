@@ -22,11 +22,8 @@ namespace CVBuilder.Contract.UseCases.UserCv
         ) : ICommand<BaseResponseDto<bool>>;
 
         public record CreateUserCvCommand(
-            Request.PersonalInfoSection PersonalInfo,
-            Request.Section<Request.ExperienceItemRequest> Experience,
-            Request.Section<Request.ProjectItemRequest> Projects,
-            Request.Section<Request.EducationItemRequest> Education,
-            Request.SkillsetsSection Skillsets
+            Guid Id,
+            string Body
         ) : ICommand<BaseResponseDto<UserCvDto>>;
 
         public record UpdateUserCvCommandV2(

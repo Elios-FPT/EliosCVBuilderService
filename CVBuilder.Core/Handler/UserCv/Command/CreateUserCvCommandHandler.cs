@@ -23,12 +23,12 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
 		public async Task<BaseResponseDto<UserCvDto>> Handle(CreateUserCvCommand request, CancellationToken cancellationToken)
 		{
-			if (request.PersonalInfo == null)
+			if (request.Body == null)
 			{
 				return new BaseResponseDto<UserCvDto>
 				{
 					Status = 400,
-					Message = "PersonalInfo is required.",
+					Message = "data is required.",
 					ResponseData = null
 				};
 			}
@@ -38,7 +38,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 				using var uow = await _resumeRepo.BeginTransactionAsync();
 				try
 				{
-					var ownerId = request.PersonalInfo.Id;
+					var ownerId = request.Id;
 					
 					// Serialize entire request to JSON
 					var jsonBody = JsonSerializer.Serialize(request, new JsonSerializerOptions 
@@ -53,7 +53,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 						OwnerId = ownerId,
 						Body = jsonBody,
 						CreatedAt = DateTime.UtcNow,
-						UpdatedAt = null,
+						UpdatedAt = DateTime.UtcNow,
 						IsDeleted = false
 					};
 

@@ -16,7 +16,7 @@ namespace CVBuilder.Infrastructure.DataContext
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure TemplateCv
+            // Configure TemplateCv (separate feature, keep for template management)
             modelBuilder.Entity<Elios.CVBuilder.Domain.Models.TemplateCv>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -27,17 +27,32 @@ namespace CVBuilder.Infrastructure.DataContext
                 entity.Property(e => e.IsDeleted).IsRequired().HasDefaultValue(false);
             });
 
-            // Configure UserCv - single table with JSON body
+            // Configure UserCv - single table with JSON body storage
             modelBuilder.Entity<Elios.CVBuilder.Domain.Models.UserCv>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.OwnerId).IsRequired();
-                entity.Property(e => e.OwnerId).HasColumnName("OwnerId");
-                entity.Property(e => e.Body).IsRequired().HasColumnType("jsonb");
-                entity.Property(e => e.CreatedAt).IsRequired();
+                
+                entity.Property(e => e.OwnerId)
+                    .IsRequired();
+                
+                entity.Property(e => e.Body)
+                    .IsRequired()
+                    .HasColumnType("jsonb");
+                
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired();
+                
                 entity.Property(e => e.UpdatedAt);
-                entity.Property(e => e.IsDeleted).IsRequired().HasDefaultValue(false);
-                entity.HasIndex(e => e.OwnerId).HasDatabaseName("IX_UserCv_OwnerId");
+                
+                entity.Property(e => e.IsDeleted)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                
+                entity.Property(e => e.DeletedAt);
+                
+                // Index for filtering by owner
+                entity.HasIndex(e => e.OwnerId)
+                    .HasDatabaseName("IX_UserCv_OwnerId");
                 
                 // Global query filter for soft-delete
                 entity.HasQueryFilter(e => !e.IsDeleted);

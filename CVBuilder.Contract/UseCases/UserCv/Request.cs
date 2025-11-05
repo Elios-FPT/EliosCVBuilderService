@@ -10,9 +10,7 @@ namespace CVBuilder.Contract.UseCases.UserCv
     public static class Request
     {
         public record CreateUserCvRequest(
-            [Required] Guid UserId,
-            Guid TemplateId,
-            [Required] string Title
+            [Required] string Body
         );
 
         public record UpdateUserCvRequest(
@@ -97,14 +95,6 @@ namespace CVBuilder.Contract.UseCases.UserCv
         public record SkillItemRequest(
             string Id,
             string Name
-        );
-
-        public record CreateUserCvRequestV2(
-            PersonalInfoSection PersonalInfo,
-            Section<ExperienceItemRequest> Experience,
-            Section<ProjectItemRequest> Projects,
-            Section<EducationItemRequest> Education,
-            SkillsetsSection Skillsets
         );
 
         public record UpdateUserCvRequestV2(
