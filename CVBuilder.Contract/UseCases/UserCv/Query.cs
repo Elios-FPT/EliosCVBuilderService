@@ -14,7 +14,7 @@ namespace CVBuilder.Contract.UseCases.UserCv
     public static class Query
     {
         public record GetUserCvByIdQuery(
-            Guid OwnerId,
+            Guid IdHeader,
             Guid Id
         ) : IQuery<BaseResponseDto<JsonElement>>;
 

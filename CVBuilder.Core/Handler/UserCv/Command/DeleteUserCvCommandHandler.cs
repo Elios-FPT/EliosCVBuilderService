@@ -1,7 +1,9 @@
 using CVBuilder.Contract.Message;
 using CVBuilder.Contract.Shared;
 using CVBuilder.Core.Interfaces;
+using Elios.CVBuilder.Domain.Models;
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
@@ -32,7 +34,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             try
             {
                 var existingUserCv = await _userCvRepository.GetByIdAsync(request.Id);
-                if (existingUserCv == null)
+                if (existingUserCv == null || request.IdHeader != existingUserCv.OwnerId)
                 {
                     return new BaseResponseDto<bool>
                     {
@@ -42,10 +44,25 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                     };
                 }
 
+                // Check if already deleted
+                if (existingUserCv.IsDeleted)
+                {
+                    return new BaseResponseDto<bool>
+                    {
+                        Status = 400,
+                        Message = "User CV is already deleted.",
+                        ResponseData = false
+                    };
+                }
+
                 using var transaction = await _userCvRepository.BeginTransactionAsync();
                 try
                 {
-                    await _userCvRepository.DeleteAsync(existingUserCv);
+                    // Soft delete: set IsDeleted = true and DeletedAt = current time
+                    existingUserCv.IsDeleted = true;
+                    existingUserCv.DeletedAt = DateTime.UtcNow;
+                    
+                    await _userCvRepository.UpdateAsync(existingUserCv);
                     await transaction.CommitAsync();
 
                     return new BaseResponseDto<bool>

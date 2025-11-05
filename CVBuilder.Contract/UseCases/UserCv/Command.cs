@@ -14,11 +14,12 @@ namespace CVBuilder.Contract.UseCases.UserCv
     {
         public record UpdateUserCvCommand(
             Guid Id,
-            Guid OwnerId,
+            Guid IdHeader,
             string Body
         ) : ICommand<BaseResponseDto<UserCvDto>>;
 
         public record DeleteUserCvCommand(
+            Guid IdHeader,
             Guid Id
         ) : ICommand<BaseResponseDto<bool>>;
 

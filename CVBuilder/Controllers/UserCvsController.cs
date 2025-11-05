@@ -58,10 +58,10 @@ namespace CVBuilder.Web.Controllers
         public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] JsonElement request)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
-            Guid id = Guid.Parse(userIdHeader);
+            Guid idHeader = Guid.Parse(userIdHeader);
             var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new CreateUserCvCommand(
-                Id: id,
+                Id: idHeader,
                 Body: Body);
             return await _sender.Send(command);
         }
@@ -96,9 +96,9 @@ namespace CVBuilder.Web.Controllers
         public async Task<BaseResponseDto<JsonElement>> GetUserCv([FromRoute] Guid id)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
-            Guid ownerId = Guid.Parse(userIdHeader);
+            Guid idHeader = Guid.Parse(userIdHeader);
             var query = new GetUserCvByIdQuery(
-                OwnerId: ownerId,
+                IdHeader: idHeader,
                 Id: id);
             return await _sender.Send(query);
         }
@@ -171,11 +171,11 @@ namespace CVBuilder.Web.Controllers
         public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] JsonElement request)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
-            Guid ownerId = Guid.Parse(userIdHeader);
+            Guid idHeader = Guid.Parse(userIdHeader);
             var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new UpdateUserCvCommand(
                 Id: id,
-                OwnerId: ownerId,
+                IdHeader: idHeader,
                 Body: Body);
             return await _sender.Send(command);
         }
@@ -209,7 +209,11 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<BaseResponseDto<bool>> DeleteUserCv([FromRoute] Guid id)
         {
-            var command = new DeleteUserCvCommand(Id: id);
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid idHeader = Guid.Parse(userIdHeader);
+            var command = new DeleteUserCvCommand(
+                IdHeader: idHeader,
+                Id: id);
             return await _sender.Send(command);
         }
     }

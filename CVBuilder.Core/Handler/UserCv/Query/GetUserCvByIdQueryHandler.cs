@@ -45,7 +45,7 @@ namespace CVBuilder.Core.Handler.UserCv.Query
                     };
                 }
 
-                if(request.OwnerId != userCv.OwnerId)
+                if(request.IdHeader != userCv.OwnerId)
                 {
                     return new BaseResponseDto<JsonElement>
                     {
