@@ -36,7 +36,12 @@ namespace CVBuilder.Core.Handler.UserCv.Query
             {
                 var userCv = await _userCvRepository.GetOneAsync(
                     filter: uc => uc.Id == request.Id,
-                    include: q => q.Include(uc => uc.Template));
+                    include: q => q
+                        .Include(uc => uc.PersonalInfo)!.ThenInclude(pi => pi!.Links)
+                        .Include(uc => uc.ExperienceItems)
+                        .Include(uc => uc.ProjectItems)
+                        .Include(uc => uc.EducationItems)
+                        .Include(uc => uc.SkillSet)!.ThenInclude(ss => ss!.SkillItems));
 
                 if (userCv == null)
                 {

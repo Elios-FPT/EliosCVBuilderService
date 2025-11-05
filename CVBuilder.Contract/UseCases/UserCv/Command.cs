@@ -12,12 +12,6 @@ namespace CVBuilder.Contract.UseCases.UserCv
 {
     public static class Command
     {
-        public record CreateUserCvCommand(
-            Guid UserId,
-            Guid TemplateId,
-            string Title
-        ) : ICommand<BaseResponseDto<UserCvDto>>;
-
         public record UpdateUserCvCommand(
             Guid Id,
             string Title
@@ -26,5 +20,22 @@ namespace CVBuilder.Contract.UseCases.UserCv
         public record DeleteUserCvCommand(
             Guid Id
         ) : ICommand<BaseResponseDto<bool>>;
+
+        public record CreateUserCvCommand(
+            Request.PersonalInfoSection PersonalInfo,
+            Request.Section<Request.ExperienceItemRequest> Experience,
+            Request.Section<Request.ProjectItemRequest> Projects,
+            Request.Section<Request.EducationItemRequest> Education,
+            Request.SkillsetsSection Skillsets
+        ) : ICommand<BaseResponseDto<UserCvDto>>;
+
+        public record UpdateUserCvCommandV2(
+            Guid Id,
+            Request.PersonalInfoSection PersonalInfo,
+            Request.Section<Request.ExperienceItemRequest> Experience,
+            Request.Section<Request.ProjectItemRequest> Projects,
+            Request.Section<Request.EducationItemRequest> Education,
+            Request.SkillsetsSection Skillsets
+        ) : ICommand<BaseResponseDto<UserCvDto>>;
     }
 }

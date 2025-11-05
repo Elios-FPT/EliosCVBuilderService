@@ -10,9 +10,7 @@ namespace Elios.CVBuilder.Domain.Models
     public class UserCv : BaseEntity
     {
         public Guid UserId { get; set; }      
-        public Guid TemplateId { get; set; }
         public string ResumeTitle { get; set; } = default!;
-        public TemplateCv Template { get; set; } = default!;
         public PersonalInfo? PersonalInfo { get; set; }
         public ICollection<ExperienceItem> ExperienceItems { get; set; } = new List<ExperienceItem>();
         public ICollection<ProjectItem> ProjectItems { get; set; } = new List<ProjectItem>();

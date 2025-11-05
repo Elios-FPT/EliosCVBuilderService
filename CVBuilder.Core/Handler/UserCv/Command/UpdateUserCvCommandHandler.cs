@@ -45,8 +45,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             try
             {
                 var existingUserCv = await _userCvRepository.GetOneAsync(
-                    filter: uc => uc.Id == request.Id,
-                    include: q => q.Include(uc => uc.Template));
+                    filter: uc => uc.Id == request.Id);
 
                 if (existingUserCv == null)
                 {

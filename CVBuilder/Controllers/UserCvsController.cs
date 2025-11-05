@@ -17,7 +17,7 @@ namespace CVBuilder.Web.Controllers
     [ApiVersion(1)]
     [Produces("application/json")]
     [ControllerName("UserCvs")]
-    [Route("api/v1/[controller]")]
+    [Route("api/[controller]")]
     public class UserCvsController : ControllerBase
     {
         private readonly ISender _sender;
@@ -36,10 +36,10 @@ namespace CVBuilder.Web.Controllers
         /// This endpoint allows authenticated users with the `usercv:write` permission to create a new user CV.
         /// </pre>
         /// </remarks>
-        /// <param name="request">A <see cref="CreateUserCvRequest"/> object containing the user CV details.</param>
+        /// <param name="request">A <see cref="CreateUserCvRequestV2"/> object containing the user CV details.</param>
         /// <returns>
-        /// → <seealso cref="CreateUserCvCommand" /><br/>
-        /// → <seealso cref="CreateUserCvCommandHandler" /><br/>
+        /// → <seealso cref="CreateUserCvCommandV2" /><br/>
+        /// → <seealso cref="CreateUserCvCommandV2Handler" /><br/>
         /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the created user CV.<br/>
         /// </returns>
         /// <response code="200">User CV created successfully.</response>
@@ -54,13 +54,14 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] CreateUserCvRequest request)
+        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] CreateUserCvRequestV2 request)
         {
             var command = new CreateUserCvCommand(
-                UserId: request.UserId,
-                TemplateId: request.TemplateId,
-                Title: request.Title);
-
+                PersonalInfo: request.PersonalInfo,
+                Experience: request.Experience,
+                Projects: request.Projects,
+                Education: request.Education,
+                Skillsets: request.Skillsets);
             return await _sender.Send(command);
         }
 
@@ -142,10 +143,10 @@ namespace CVBuilder.Web.Controllers
         /// </pre>
         /// </remarks>
         /// <param name="id">The unique identifier of the user CV to update.</param>
-        /// <param name="request">A <see cref="UpdateUserCvRequest"/> object containing the updated user CV details.</param>
+        /// <param name="request">A <see cref="UpdateUserCvRequestV2"/> object containing the updated user CV details.</param>
         /// <returns>
-        /// → <seealso cref="UpdateUserCvCommand" /><br/>
-        /// → <seealso cref="UpdateUserCvCommandHandler" /><br/>
+        /// → <seealso cref="UpdateUserCvCommandV2" /><br/>
+        /// → <seealso cref="UpdateUserCvCommandV2Handler" /><br/>
         /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the updated user CV.<br/>
         /// </returns>
         /// <response code="200">User CV updated successfully.</response>
@@ -160,12 +161,15 @@ namespace CVBuilder.Web.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] UpdateUserCvRequest request)
+        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] UpdateUserCvRequestV2 request)
         {
-            var command = new UpdateUserCvCommand(
+            var command = new UpdateUserCvCommandV2(
                 Id: id,
-                Title: request.Title);
-
+                PersonalInfo: request.PersonalInfo,
+                Experience: request.Experience,
+                Projects: request.Projects,
+                Education: request.Education,
+                Skillsets: request.Skillsets);
             return await _sender.Send(command);
         }
 

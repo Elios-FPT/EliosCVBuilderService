@@ -36,16 +36,9 @@ namespace CVBuilder.Infrastructure.DataContext
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.UserId).IsRequired();
-                entity.Property(e => e.TemplateId).IsRequired();
                 entity.Property(e => e.ResumeTitle).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.Property(e => e.UpdatedAt);
-
-                // Configure relationship
-                entity.HasOne(e => e.Template)
-                    .WithMany(t => t.UserCvs)
-                    .HasForeignKey(e => e.TemplateId)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }
