@@ -18,7 +18,6 @@ namespace CVBuilder.Contract.UseCases.UserCv
         );
 
         public record GetUserCvsRequest(
-            [Required] Guid UserId,
             int PageNumber = 1,
             int PageSize = 20
         );

@@ -79,7 +79,7 @@ namespace CVBuilder.Web.Controllers
         /// <returns>
         /// → <seealso cref="GetUserCvByIdQuery" /><br/>
         /// → <seealso cref="GetUserCvByIdQueryHandler" /><br/>
-        /// → A <see cref="BaseResponseDto{UserCvDto}"/> containing the user CV.<br/>
+        /// → A <see cref="BaseResponseDto{JsonElement}"/> containing the user CV body (JSON object).<br/>
         /// </returns>
         /// <response code="200">User CV retrieved successfully.</response>
         /// <response code="400">The request is invalid.</response>
@@ -88,14 +88,18 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(BaseResponseDto<UserCvDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<JsonElement>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> GetUserCv([FromRoute] Guid id)
+        public async Task<BaseResponseDto<JsonElement>> GetUserCv([FromRoute] Guid id)
         {
-            var query = new GetUserCvByIdQuery(Id: id);
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid ownerId = Guid.Parse(userIdHeader);
+            var query = new GetUserCvByIdQuery(
+                OwnerId: ownerId,
+                Id: id);
             return await _sender.Send(query);
         }
 
@@ -112,7 +116,7 @@ namespace CVBuilder.Web.Controllers
         /// <returns>
         /// → <seealso cref="GetUserCvsQuery" /><br/>
         /// → <seealso cref="GetUserCvsQueryHandler" /><br/>
-        /// → A <see cref="BaseResponseDto{IEnumerable{UserCvDto}}"/> containing the user CVs.<br/>
+        /// → A <see cref="BaseResponseDto{IEnumerable{JsonElement}}"/> containing the user CV bodies (JSON objects).<br/>
         /// </returns>
         /// <response code="200">User CVs retrieved successfully.</response>
         /// <response code="400">The request is invalid.</response>
@@ -120,14 +124,16 @@ namespace CVBuilder.Web.Controllers
         /// <response code="403">The user does not have permission to access this resource.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<UserCvDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<JsonElement>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-        public async Task<BaseResponseDto<IEnumerable<UserCvDto>>> GetUserCvs([FromQuery] GetUserCvsRequest request)
+        public async Task<BaseResponseDto<IEnumerable<JsonElement>>> GetUserCvs([FromQuery] GetUserCvsRequest request)
         {
+            var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
+            Guid ownerId = Guid.Parse(userIdHeader);
             var query = new GetUserCvsQuery(
-                UserId: request.UserId,
+                UserId: ownerId,
                 PageNumber: request.PageNumber,
                 PageSize: request.PageSize);
 

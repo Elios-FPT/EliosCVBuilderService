@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace CVBuilder.Contract.UseCases.UserCv
@@ -13,13 +14,14 @@ namespace CVBuilder.Contract.UseCases.UserCv
     public static class Query
     {
         public record GetUserCvByIdQuery(
+            Guid OwnerId,
             Guid Id
-        ) : IQuery<BaseResponseDto<UserCvDto>>;
+        ) : IQuery<BaseResponseDto<JsonElement>>;
 
         public record GetUserCvsQuery(
             Guid UserId,
             int PageNumber = 1,
             int PageSize = 20
-        ) : IQuery<BaseResponseDto<IEnumerable<UserCvDto>>>;
+        ) : IQuery<BaseResponseDto<IEnumerable<JsonElement>>>;
     }
 }
