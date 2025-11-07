@@ -1,16 +1,16 @@
 using CVBuilder.Contract.Message;
 using CVBuilder.Contract.Shared;
+using CVBuilder.Contract.TransferObjects;
 using CVBuilder.Core.Interfaces;
 using Elios.CVBuilder.Domain.Models;
 using System;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
 
 namespace CVBuilder.Core.Handler.UserCv.Command
 {
-    public class DeleteUserCvCommandHandler : ICommandHandler<DeleteUserCvCommand, BaseResponseDto<bool>>
+    public class DeleteUserCvCommandHandler : ICommandHandler<DeleteUserCvCommand, BaseResponseDto<DeleteUserCvResponseDto>>
     {
         private readonly IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> _userCvRepository;
 
@@ -19,15 +19,15 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             _userCvRepository = userCvRepository ?? throw new ArgumentNullException(nameof(userCvRepository));
         }
 
-        public async Task<BaseResponseDto<bool>> Handle(DeleteUserCvCommand request, CancellationToken cancellationToken)
+        public async Task<BaseResponseDto<DeleteUserCvResponseDto>> Handle(DeleteUserCvCommand request, CancellationToken cancellationToken)
         {
             if (request.Id == Guid.Empty)
             {
-                return new BaseResponseDto<bool>
+                return new BaseResponseDto<DeleteUserCvResponseDto>
                 {
                     Status = 400,
                     Message = "User CV ID cannot be empty.",
-                    ResponseData = false
+                    ResponseData = new DeleteUserCvResponseDto(false, "User CV ID cannot be empty.")
                 };
             }
 
@@ -36,22 +36,22 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 var existingUserCv = await _userCvRepository.GetByIdAsync(request.Id);
                 if (existingUserCv == null || request.IdHeader != existingUserCv.OwnerId)
                 {
-                    return new BaseResponseDto<bool>
+                    return new BaseResponseDto<DeleteUserCvResponseDto>
                     {
                         Status = 404,
                         Message = "User CV not found.",
-                        ResponseData = false
+                        ResponseData = new DeleteUserCvResponseDto(false, "User CV not found.")
                     };
                 }
 
                 // Check if already deleted
                 if (existingUserCv.IsDeleted)
                 {
-                    return new BaseResponseDto<bool>
+                    return new BaseResponseDto<DeleteUserCvResponseDto>
                     {
                         Status = 400,
                         Message = "User CV is already deleted.",
-                        ResponseData = false
+                        ResponseData = new DeleteUserCvResponseDto(false, "User CV is already deleted.")
                     };
                 }
 
@@ -65,11 +65,11 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                     await _userCvRepository.UpdateAsync(existingUserCv);
                     await transaction.CommitAsync();
 
-                    return new BaseResponseDto<bool>
+                    return new BaseResponseDto<DeleteUserCvResponseDto>
                     {
                         Status = 200,
                         Message = "User CV deleted successfully.",
-                        ResponseData = true
+                        ResponseData = new DeleteUserCvResponseDto(true, "Resume deleted successfully.")
                     };
                 }
                 catch
@@ -80,11 +80,11 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             }
             catch (Exception ex)
             {
-                return new BaseResponseDto<bool>
+                return new BaseResponseDto<DeleteUserCvResponseDto>
                 {
                     Status = 500,
                     Message = $"Failed to delete user CV: {ex.Message}",
-                    ResponseData = false
+                    ResponseData = new DeleteUserCvResponseDto(false, "Failed to delete user CV.")
                 };
             }
         }

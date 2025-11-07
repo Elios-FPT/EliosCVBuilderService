@@ -22,6 +22,6 @@ namespace CVBuilder.Contract.UseCases.UserCv
             Guid UserId,
             int PageNumber = 1,
             int PageSize = 20
-        ) : IQuery<BaseResponseDto<IEnumerable<JsonElement>>>;
+        ) : IQuery<BaseResponseDto<IEnumerable<UserCvSummaryDto>>>;
     }
 }

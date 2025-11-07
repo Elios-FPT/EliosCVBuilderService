@@ -51,10 +51,11 @@ namespace CVBuilder.Core.Handler.UserCv.Query
                     {
                         Status = 404,
                         Message = "You can only watch own resume.",
+                        ResponseData = default
                     };
                 }
 
-                if (string.IsNullOrWhiteSpace(userCv.Body))
+                if (string.IsNullOrWhiteSpace(userCv.Data))
                 {
                     return new BaseResponseDto<JsonElement>
                     {
@@ -65,7 +66,7 @@ namespace CVBuilder.Core.Handler.UserCv.Query
                 }
 
                 // Parse JSON string to JsonElement
-                var jsonElement = JsonSerializer.Deserialize<JsonElement>(userCv.Body);
+                var jsonElement = JsonSerializer.Deserialize<JsonElement>(userCv.Data);
 
                 return new BaseResponseDto<JsonElement>
                 {

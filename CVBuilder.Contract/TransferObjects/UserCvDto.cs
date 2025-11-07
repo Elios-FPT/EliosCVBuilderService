@@ -3,6 +3,26 @@ using System.Collections.Generic;
 
 namespace CVBuilder.Contract.TransferObjects
 {
+    public record CreateUserCvResponseDto(
+        Guid Id
+    );
+
+    public record UserCvSummaryDto(
+        Guid Id,
+        string ResumeTitle,
+        DateTime? UpdatedAt
+    );
+
+    public record UpdateUserCvResponseDto(
+        bool Success,
+        string Message
+    );
+
+    public record DeleteUserCvResponseDto(
+        bool Success,
+        string Message
+    );
+
     // Shared section container
     public record SectionDto<TItem>(
         Guid Id,

@@ -16,17 +16,17 @@ namespace CVBuilder.Contract.UseCases.UserCv
             Guid Id,
             Guid IdHeader,
             string Body
-        ) : ICommand<BaseResponseDto<UserCvDto>>;
+        ) : ICommand<BaseResponseDto<UpdateUserCvResponseDto>>;
 
         public record DeleteUserCvCommand(
             Guid IdHeader,
             Guid Id
-        ) : ICommand<BaseResponseDto<bool>>;
+        ) : ICommand<BaseResponseDto<DeleteUserCvResponseDto>>;
 
         public record CreateUserCvCommand(
-            Guid Id,
-            string Body
-        ) : ICommand<BaseResponseDto<UserCvDto>>;
+            Guid OwnerId,
+            string ResumeTitle
+        ) : ICommand<BaseResponseDto<CreateUserCvResponseDto>>;
 
         public record UpdateUserCvCommandV2(
             Guid Id,

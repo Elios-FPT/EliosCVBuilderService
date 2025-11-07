@@ -17,7 +17,7 @@ namespace CVBuilder.Web.Controllers
     /// </summary>
     [ApiVersion(1)]
     [Produces("application/json")]
-    [ControllerName("CVBuilder/UserCvs")]
+    [ControllerName("cvbuilder/UserCvs")]
     [Route("api/cvbuilder/[controller]")]
     public class UserCvsController : ControllerBase
     {
@@ -50,19 +50,18 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified template was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpPost]
-        [ProducesResponseType(typeof(BaseResponseDto<UserCvDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<CreateUserCvResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> CreateUserCv([FromBody] JsonElement request)
+        public async Task<BaseResponseDto<CreateUserCvResponseDto>> CreateUserCv([FromBody]CreateUserCvRequest request)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
             Guid idHeader = Guid.Parse(userIdHeader);
-            var Body = System.Text.Json.JsonSerializer.Serialize(request);
             var command = new CreateUserCvCommand(
-                Id: idHeader,
-                Body: Body);
+                OwnerId: idHeader,
+                ResumeTitle: request.ResumeTitle);
             return await _sender.Send(command);
         }
 
@@ -124,18 +123,18 @@ namespace CVBuilder.Web.Controllers
         /// <response code="403">The user does not have permission to access this resource.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<JsonElement>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<UserCvSummaryDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-        public async Task<BaseResponseDto<IEnumerable<JsonElement>>> GetUserCvs([FromQuery] GetUserCvsRequest request)
+        public async Task<BaseResponseDto<IEnumerable<UserCvSummaryDto>>> GetUserCvs()
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
             Guid ownerId = Guid.Parse(userIdHeader);
             var query = new GetUserCvsQuery(
                 UserId: ownerId,
-                PageNumber: request.PageNumber,
-                PageSize: request.PageSize);
+                PageNumber: 1,
+                PageSize: 20);
 
             return await _sender.Send(query);
         }
@@ -163,12 +162,12 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpPut("{id}")]
-        [ProducesResponseType(typeof(BaseResponseDto<UserCvDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<UpdateUserCvResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<UserCvDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] JsonElement request)
+        public async Task<BaseResponseDto<UpdateUserCvResponseDto>> UpdateUserCv([FromRoute] Guid id, [FromBody] JsonElement request)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
             Guid idHeader = Guid.Parse(userIdHeader);
@@ -202,12 +201,12 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpDelete("{id}")]
-        [ProducesResponseType(typeof(BaseResponseDto<bool>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseDto<DeleteUserCvResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-        public async Task<BaseResponseDto<bool>> DeleteUserCv([FromRoute] Guid id)
+        public async Task<BaseResponseDto<DeleteUserCvResponseDto>> DeleteUserCv([FromRoute] Guid id)
         {
             var userIdHeader = HttpContext.Request.Headers["X-Auth-Request-User"].FirstOrDefault();
             Guid idHeader = Guid.Parse(userIdHeader);
