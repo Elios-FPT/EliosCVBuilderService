@@ -35,7 +35,11 @@ namespace CVBuilder.Infrastructure.DataContext
                 entity.Property(e => e.OwnerId)
                     .IsRequired();
                 
-                entity.Property(e => e.Body)
+                entity.Property(e => e.ResumeTitle)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.Data)
                     .IsRequired()
                     .HasColumnType("jsonb");
                 

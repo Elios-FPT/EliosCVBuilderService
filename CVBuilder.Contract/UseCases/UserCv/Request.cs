@@ -10,7 +10,8 @@ namespace CVBuilder.Contract.UseCases.UserCv
     public static class Request
     {
         public record CreateUserCvRequest(
-            [Required] string Body
+            [Required]
+            string ResumeTitle
         );
 
         public record UpdateUserCvRequest(

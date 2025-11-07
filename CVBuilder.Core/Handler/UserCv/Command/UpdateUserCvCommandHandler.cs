@@ -10,7 +10,7 @@ using static CVBuilder.Contract.UseCases.UserCv.Command;
 
 namespace CVBuilder.Core.Handler.UserCv.Command
 {
-    public class UpdateUserCvCommandHandler : ICommandHandler<UpdateUserCvCommand, BaseResponseDto<UserCvDto>>
+    public class UpdateUserCvCommandHandler : ICommandHandler<UpdateUserCvCommand, BaseResponseDto<UpdateUserCvResponseDto>>
     {
         private readonly IGenericRepository<Elios.CVBuilder.Domain.Models.UserCv> _userCvRepository;
 
@@ -19,11 +19,11 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             _userCvRepository = userCvRepository ?? throw new ArgumentNullException(nameof(userCvRepository));
         }
 
-        public async Task<BaseResponseDto<UserCvDto>> Handle(UpdateUserCvCommand request, CancellationToken cancellationToken)
+        public async Task<BaseResponseDto<UpdateUserCvResponseDto>> Handle(UpdateUserCvCommand request, CancellationToken cancellationToken)
         {
             if (request.Id == Guid.Empty)
             {
-                return new BaseResponseDto<UserCvDto>
+                return new BaseResponseDto<UpdateUserCvResponseDto>
                 {
                     Status = 400,
                     Message = "User CV ID cannot be empty.",
@@ -33,10 +33,10 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
             if (string.IsNullOrWhiteSpace(request.Body))
             {
-                return new BaseResponseDto<UserCvDto>
+                return new BaseResponseDto<UpdateUserCvResponseDto>
                 {
                     Status = 400,
-                    Message = "Body is required.",
+                    Message = "Data is required.",
                     ResponseData = null
                 };
             }
@@ -48,7 +48,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
                 if (existingUserCv == null)
                 {
-                    return new BaseResponseDto<UserCvDto>
+                    return new BaseResponseDto<UpdateUserCvResponseDto>
                     {
                         Status = 404,
                         Message = "User CV not found.",
@@ -59,17 +59,18 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                 using var transaction = await _userCvRepository.BeginTransactionAsync();
                 try
                 {
-                    // Update Body with new JSON string
-                    existingUserCv.Body = request.Body;
+                    // Update Data with new JSON string
+                    existingUserCv.Data = request.Body;
                     existingUserCv.UpdatedAt = DateTime.UtcNow;
 
                     await _userCvRepository.UpdateAsync(existingUserCv);
                     await transaction.CommitAsync();
 
-                    return new BaseResponseDto<UserCvDto>
+                    return new BaseResponseDto<UpdateUserCvResponseDto>
                     {
                         Status = 200,
                         Message = "User CV updated successfully.",
+                        ResponseData = new UpdateUserCvResponseDto(true, "Resume updated successfully.")
                     };
                 }
                 catch
@@ -80,7 +81,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             }
             catch (Exception ex)
             {
-                return new BaseResponseDto<UserCvDto>
+                return new BaseResponseDto<UpdateUserCvResponseDto>
                 {
                     Status = 500,
                     Message = $"Failed to update user CV: {ex.Message}",

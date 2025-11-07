@@ -36,14 +36,14 @@ namespace CVBuilder.Core.Extensions
 
         public static UserCvDto ToDto(this Elios.CVBuilder.Domain.Models.UserCv userCv)
         {
-            // Deserialize Body JSON directly to DTO
-            if (string.IsNullOrEmpty(userCv.Body))
+            // Deserialize Data JSON directly to DTO
+            if (string.IsNullOrEmpty(userCv.Data))
             {
                 return null!;
             }
 
             return System.Text.Json.JsonSerializer.Deserialize<UserCvDto>(
-                userCv.Body, 
+                userCv.Data, 
                 new System.Text.Json.JsonSerializerOptions 
                 { 
                     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase 

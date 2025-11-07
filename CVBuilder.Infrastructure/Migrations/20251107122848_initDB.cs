@@ -32,37 +32,33 @@ namespace CVBuilder.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    TemplateId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    OwnerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ResumeTitle = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Data = table.Column<string>(type: "jsonb", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_UserCvs", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_UserCvs_TemplateCvs_TemplateId",
-                        column: x => x.TemplateId,
-                        principalTable: "TemplateCvs",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserCvs_TemplateId",
+                name: "IX_UserCv_OwnerId",
                 table: "UserCvs",
-                column: "TemplateId");
+                column: "OwnerId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "UserCvs");
+                name: "TemplateCvs");
 
             migrationBuilder.DropTable(
-                name: "TemplateCvs");
+                name: "UserCvs");
         }
     }
 }
