@@ -33,6 +33,16 @@ ScaffoldingReadMe.txt
 # NuGet
 *.nupkg
 *.snupkg
+.claude
+.opencode
+plans/
+docs/
+nul
+repomix-output.xml
+.repomixignore
+FlowCreateApi.md
+CLAUDE.md
+FlowCreateApi.md
 **/packages/*
 !**/packages/build/
 !**/packages/repositories.config

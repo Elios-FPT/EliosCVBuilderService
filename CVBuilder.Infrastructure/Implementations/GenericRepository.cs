@@ -207,7 +207,6 @@ namespace CVBuilder.Infrastructure.Implementations
 
         public async Task<IUnitOfWork> BeginTransactionAsync()
         {
-            // Do not start a transaction here; EfUnitOfWork will create and manage it.
             return await Task.FromResult<IUnitOfWork>(new EfUnitOfWork(_context));
         }
     }

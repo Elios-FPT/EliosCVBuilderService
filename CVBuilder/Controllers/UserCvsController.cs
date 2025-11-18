@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using CVBuilder.Contract.Shared;
 using CVBuilder.Contract.TransferObjects;
+using CVBuilder.Web.Attributes;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +51,7 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified template was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpPost]
+        [ServiceAuthorize("User")]
         [ProducesResponseType(typeof(BaseResponseDto<CreateUserCvResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -87,6 +89,7 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet("{id}")]
+        [ServiceAuthorize("User")]
         [ProducesResponseType(typeof(BaseResponseDto<JsonElement>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -123,6 +126,7 @@ namespace CVBuilder.Web.Controllers
         /// <response code="403">The user does not have permission to access this resource.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpGet]
+        [ServiceAuthorize("User")]
         [ProducesResponseType(typeof(BaseResponseDto<IEnumerable<UserCvSummaryDto>>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -162,6 +166,7 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpPut("{id}")]
+        [ServiceAuthorize("User")]
         [ProducesResponseType(typeof(BaseResponseDto<UpdateUserCvResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -201,6 +206,7 @@ namespace CVBuilder.Web.Controllers
         /// <response code="404">The specified user CV was not found.</response>
         /// <response code="500">An internal server error occurred.</response>
         [HttpDelete("{id}")]
+        [ServiceAuthorize("User")]
         [ProducesResponseType(typeof(BaseResponseDto<DeleteUserCvResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
