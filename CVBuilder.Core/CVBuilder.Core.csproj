@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CVBuilder.Contract\CVBuilder.Contract.csproj" />
     <ProjectReference Include="..\CVBuilder.Domain\CVBuilder.Domain.csproj" />
   </ItemGroup>
 

@@ -1,13 +1,12 @@
-using CVBuilder.Contract.Shared;
-using CVBuilder.Contract.TransferObjects;
-using CVBuilder.Web.Controllers;
-using MediatR;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Moq;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CVBuilder.Contract.Shared;
+using CVBuilder.Contract.TransferObjects;
+using CVBuilder.Core.Handler.UserCv.Command;
+using CVBuilder.Core.Interfaces;
+using Elios.CVBuilder.Domain.Models;
+using Moq;
 using Xunit;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
 
@@ -15,185 +14,266 @@ namespace CVBuilder.Test
 {
     public class DeleteUserCvTest
     {
-        private readonly Mock<ISender> _senderMock;
-        private readonly UserCvsController _controller;
+        private readonly Mock<IGenericRepository<UserCv>> _resumeRepoMock;
+        private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly DeleteUserCvCommandHandler _handler;
 
         public DeleteUserCvTest()
         {
-            _senderMock = new Mock<ISender>();
-            _controller = new UserCvsController(_senderMock.Object);
+            _resumeRepoMock = new Mock<IGenericRepository<UserCv>>();
+            _unitOfWorkMock = new Mock<IUnitOfWork>();
+
+            _handler = new DeleteUserCvCommandHandler(_resumeRepoMock.Object);
         }
 
-        private void SetupHttpContext(string userId)
+        private void SetupTransaction()
         {
-            var httpContext = new DefaultHttpContext();
-            httpContext.Request.Headers["X-Auth-Request-User"] = userId;
-            _controller.ControllerContext = new ControllerContext
-            {
-                HttpContext = httpContext
-            };
+            _resumeRepoMock
+                .Setup(r => r.BeginTransactionAsync())
+                .ReturnsAsync(_unitOfWorkMock.Object);
         }
 
         [Fact]
-        public async Task DeleteUserCv_ValidIdAndOwner_ReturnsSuccess()
+        public async Task Handle_ValidRequest_ReturnsSuccessAndSoftDeletesCv()
         {
             // Arrange
-            var userId = Guid.NewGuid();
             var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<DeleteUserCvResponseDto>
+            var userId = Guid.NewGuid();
+            var existingCv = new UserCv
             {
-                Status = 200,
-                Message = "CV deleted successfully",
-                ResponseData = new DeleteUserCvResponseDto(true, "Delete successful")
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = "{\"personalInfo\": {\"firstName\": \"John\"}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false,
+                DeletedAt = null
             };
 
-            _senderMock.Setup(s => s.Send(It.IsAny<DeleteUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var command = new DeleteUserCvCommand(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetByIdAsync(cvId))
+                .ReturnsAsync(existingCv);
+
+            SetupTransaction();
 
             // Act
-            var result = await _controller.DeleteUserCv(cvId);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(200, result.Status);
-            Assert.Equal("CV deleted successfully", result.Message);
+            Assert.Equal("User CV deleted successfully.", result.Message);
             Assert.NotNull(result.ResponseData);
             Assert.True(result.ResponseData.Success);
+            Assert.Equal("Resume deleted successfully.", result.ResponseData.Message);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<DeleteUserCvCommand>(cmd =>
-                    cmd.IdHeader == userId &&
-                    cmd.Id == cvId
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(cvId), Times.Once);
+
+            _resumeRepoMock.Verify(r => r.UpdateAsync(
+                It.Is<UserCv>(cv =>
+                    cv.Id == cvId &&
+                    cv.IsDeleted == true &&
+                    cv.DeletedAt != null)),
+                Times.Once);
+
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Once);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Never);
         }
 
         [Fact]
-        public async Task DeleteUserCv_ValidIdButNotOwner_ReturnsForbidden()
+        public async Task Handle_EmptyIdHeader_ReturnsBadRequest()
         {
             // Arrange
-            var userId = Guid.NewGuid();
             var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<DeleteUserCvResponseDto>
-            {
-                Status = 403,
-                Message = "You do not own this CV",
-                ResponseData = null
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<DeleteUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var command = new DeleteUserCvCommand(Guid.Empty, cvId);
 
             // Act
-            var result = await _controller.DeleteUserCv(cvId);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
-            Assert.Equal(403, result.Status);
-            Assert.Contains("You do not own this CV", result.Message);
-            Assert.Null(result.ResponseData);
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("User ID cannot be empty.", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<DeleteUserCvCommand>(cmd =>
-                    cmd.IdHeader == userId &&
-                    cmd.Id == cvId
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.UpdateAsync(It.IsAny<UserCv>()), Times.Never);
         }
 
         [Fact]
-        public async Task DeleteUserCv_NonExistentId_ReturnsNotFound()
+        public async Task Handle_EmptyId_ReturnsBadRequest()
         {
             // Arrange
             var userId = Guid.NewGuid();
-            var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<DeleteUserCvResponseDto>
-            {
-                Status = 404,
-                Message = "CV not found",
-                ResponseData = null
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<DeleteUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var command = new DeleteUserCvCommand(userId, Guid.Empty);
 
             // Act
-            var result = await _controller.DeleteUserCv(cvId);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("User CV ID cannot be empty.", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
+
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.UpdateAsync(It.IsAny<UserCv>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_NonExistentCv_ReturnsNotFound()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var command = new DeleteUserCvCommand(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetByIdAsync(cvId))
+                .ReturnsAsync((UserCv)null);
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
             Assert.Equal(404, result.Status);
-            Assert.Equal("CV not found", result.Message);
-            Assert.Null(result.ResponseData);
+            Assert.Equal("User CV not found.", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
 
-            _senderMock.Verify(s => s.Send(
-                It.IsAny<DeleteUserCvCommand>(),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(cvId), Times.Once);
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.UpdateAsync(It.IsAny<UserCv>()), Times.Never);
         }
 
         [Fact]
-        public async Task DeleteUserCv_MissingHeader_ThrowsException()
+        public async Task Handle_NotOwner_ReturnsForbidden()
         {
             // Arrange
-            SetupHttpContext(null);
             var cvId = Guid.NewGuid();
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await _controller.DeleteUserCv(cvId)
-            );
-        }
-
-        [Fact]
-        public async Task DeleteUserCv_InvalidHeader_ThrowsException()
-        {
-            // Arrange
-            SetupHttpContext("invalid-guid-format");
-            var cvId = Guid.NewGuid();
-
-            // Act & Assert
-            await Assert.ThrowsAsync<FormatException>(
-                async () => await _controller.DeleteUserCv(cvId)
-            );
-        }
-
-        [Fact]
-        public async Task DeleteUserCv_HandlerException_ReturnsServerError()
-        {
-            // Arrange
             var userId = Guid.NewGuid();
-            var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<DeleteUserCvResponseDto>
+            var differentUserId = Guid.NewGuid();
+            var existingCv = new UserCv
             {
-                Status = 500,
-                Message = "Internal server error",
-                ResponseData = null
+                Id = cvId,
+                OwnerId = differentUserId, // Different owner
+                ResumeTitle = "My Resume",
+                Data = "{\"personalInfo\": {\"firstName\": \"John\"}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
             };
 
-            _senderMock.Setup(s => s.Send(It.IsAny<DeleteUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var command = new DeleteUserCvCommand(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetByIdAsync(cvId))
+                .ReturnsAsync(existingCv);
 
             // Act
-            var result = await _controller.DeleteUserCv(cvId);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
-            Assert.Equal(500, result.Status);
-            Assert.Contains("Internal server error", result.Message);
-            Assert.Null(result.ResponseData);
+            Assert.NotNull(result);
+            Assert.Equal(403, result.Status);
+            Assert.Equal("You can only delete your own resume.", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
 
-            _senderMock.Verify(s => s.Send(
-                It.IsAny<DeleteUserCvCommand>(),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(cvId), Times.Once);
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.UpdateAsync(It.IsAny<UserCv>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_AlreadyDeleted_ReturnsBadRequest()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var existingCv = new UserCv
+            {
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = "{\"personalInfo\": {\"firstName\": \"John\"}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-2),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = true, // Already deleted
+                DeletedAt = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var command = new DeleteUserCvCommand(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetByIdAsync(cvId))
+                .ReturnsAsync(existingCv);
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("User CV is already deleted.", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
+
+            _resumeRepoMock.Verify(r => r.GetByIdAsync(cvId), Times.Once);
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.UpdateAsync(It.IsAny<UserCv>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_RepositoryThrowsException_ReturnsServerError()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var existingCv = new UserCv
+            {
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = "{\"personalInfo\": {\"firstName\": \"John\"}}",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
+            };
+
+            var command = new DeleteUserCvCommand(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetByIdAsync(cvId))
+                .ReturnsAsync(existingCv);
+
+            SetupTransaction();
+
+            _resumeRepoMock
+                .Setup(r => r.UpdateAsync(It.IsAny<UserCv>()))
+                .ThrowsAsync(new Exception("Database connection failed"));
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(500, result.Status);
+            Assert.StartsWith("Failed to delete user CV:", result.Message);
+            Assert.Contains("Database connection failed", result.Message);
+            Assert.NotNull(result.ResponseData);
+            Assert.False(result.ResponseData.Success);
+
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Never);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Once);
         }
     }
 }

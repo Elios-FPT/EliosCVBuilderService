@@ -21,6 +21,16 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
         public async Task<BaseResponseDto<DeleteUserCvResponseDto>> Handle(DeleteUserCvCommand request, CancellationToken cancellationToken)
         {
+            if (request.IdHeader == Guid.Empty)
+            {
+                return new BaseResponseDto<DeleteUserCvResponseDto>
+                {
+                    Status = 400,
+                    Message = "User ID cannot be empty.",
+                    ResponseData = new DeleteUserCvResponseDto(false, "User ID cannot be empty.")
+                };
+            }
+
             if (request.Id == Guid.Empty)
             {
                 return new BaseResponseDto<DeleteUserCvResponseDto>
@@ -34,13 +44,23 @@ namespace CVBuilder.Core.Handler.UserCv.Command
             try
             {
                 var existingUserCv = await _userCvRepository.GetByIdAsync(request.Id);
-                if (existingUserCv == null || request.IdHeader != existingUserCv.OwnerId)
+                if (existingUserCv == null)
                 {
                     return new BaseResponseDto<DeleteUserCvResponseDto>
                     {
                         Status = 404,
                         Message = "User CV not found.",
                         ResponseData = new DeleteUserCvResponseDto(false, "User CV not found.")
+                    };
+                }
+
+                if (existingUserCv.OwnerId != request.IdHeader)
+                {
+                    return new BaseResponseDto<DeleteUserCvResponseDto>
+                    {
+                        Status = 403,
+                        Message = "You can only delete your own resume.",
+                        ResponseData = new DeleteUserCvResponseDto(false, "You can only delete your own resume.")
                     };
                 }
 
@@ -62,7 +82,7 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                     existingUserCv.IsDeleted = true;
                     existingUserCv.DeletedAt = DateTime.UtcNow;
                     
-                    await _userCvRepository.UpdateAsync(existingUserCv);
+                    await _userCvRepository.DeleteAsync(existingUserCv);
                     await transaction.CommitAsync();
 
                     return new BaseResponseDto<DeleteUserCvResponseDto>

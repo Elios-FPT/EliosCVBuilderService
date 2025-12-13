@@ -1,169 +1,142 @@
-using CVBuilder.Contract.Shared;
-using CVBuilder.Contract.TransferObjects;
-using CVBuilder.Web.Controllers;
-using MediatR;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Moq;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CVBuilder.Contract.Shared;
+using CVBuilder.Contract.TransferObjects;
+using CVBuilder.Core.Handler.UserCv.Command;
+using CVBuilder.Core.Interfaces;
+using Elios.CVBuilder.Domain.Models;
+using Moq;
 using Xunit;
 using static CVBuilder.Contract.UseCases.UserCv.Command;
-using static CVBuilder.Contract.UseCases.UserCv.Request;
 
 namespace CVBuilder.Test
 {
-    public class CreateUserCvTest
+    public class CreateUserCvHandlerTest
     {
-        private readonly Mock<ISender> _senderMock;
-        private readonly UserCvsController _controller;
+        private readonly Mock<IGenericRepository<UserCv>> _resumeRepoMock;
+        private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly CreateUserCvCommandHandler _handler;
 
-        public CreateUserCvTest()
+        public CreateUserCvHandlerTest()
         {
-            _senderMock = new Mock<ISender>();
-            _controller = new UserCvsController(_senderMock.Object);
+            _resumeRepoMock = new Mock<IGenericRepository<UserCv>>();
+            _unitOfWorkMock = new Mock<IUnitOfWork>();
+
+            _handler = new CreateUserCvCommandHandler(_resumeRepoMock.Object);
         }
 
-        private void SetupHttpContext(string userId)
+        private void SetupTransaction()
         {
-            var httpContext = new DefaultHttpContext();
-            httpContext.Request.Headers["X-Auth-Request-User"] = userId;
-            _controller.ControllerContext = new ControllerContext
-            {
-                HttpContext = httpContext
-            };
+            _resumeRepoMock
+                .Setup(r => r.BeginTransactionAsync())
+                .ReturnsAsync(_unitOfWorkMock.Object);
         }
 
         [Fact]
-        public async Task CreateUserCv_ValidRequest_ReturnsCreated()
+        public async Task Handle_ValidRequest_ReturnsCreatedAndSavesCv()
         {
             // Arrange
-            var userId = Guid.NewGuid();
-            var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
+            var ownerId = Guid.NewGuid();
+            var command = new CreateUserCvCommand(ownerId, "My Resume");
 
-            var request = new CreateUserCvRequest("My Resume");
-            var expectedResponse = new BaseResponseDto<CreateUserCvResponseDto>
-            {
-                Status = 201,
-                Message = "User CV created successfully",
-                ResponseData = new CreateUserCvResponseDto(cvId)
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<CreateUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            SetupTransaction();
 
             // Act
-            var result = await _controller.CreateUserCv(request);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(201, result.Status);
-            Assert.Equal("User CV created successfully", result.Message);
+            Assert.Equal("User CV created successfully.", result.Message);
             Assert.NotNull(result.ResponseData);
-            Assert.Equal(cvId, result.ResponseData.Id);
+            Assert.NotEqual(Guid.Empty, result.ResponseData.Id);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<CreateUserCvCommand>(cmd =>
-                    cmd.OwnerId == userId &&
-                    cmd.ResumeTitle == "My Resume"
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.AddAsync(
+                It.Is<UserCv>(cv =>
+                    cv.OwnerId == ownerId &&
+                    cv.ResumeTitle == "My Resume" &&
+                    !string.IsNullOrWhiteSpace(cv.Data) &&
+                    cv.CreatedAt != default &&
+                    cv.UpdatedAt != default &&
+                    cv.IsDeleted == false)),
+                Times.Once);
+
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Once);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Never);
         }
 
         [Fact]
-        public async Task CreateUserCv_MissingHeader_ThrowsException()
+        public async Task Handle_EmptyOwnerId_ReturnsBadRequest()
         {
             // Arrange
-            SetupHttpContext(null);
-            var request = new CreateUserCvRequest("My Resume");
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await _controller.CreateUserCv(request)
-            );
-        }
-
-        [Fact]
-        public async Task CreateUserCv_InvalidHeader_ThrowsException()
-        {
-            // Arrange
-            SetupHttpContext("invalid-guid-format");
-            var request = new CreateUserCvRequest("My Resume");
-
-            // Act & Assert
-            await Assert.ThrowsAsync<FormatException>(
-                async () => await _controller.CreateUserCv(request)
-            );
-        }
-
-        [Fact]
-        public async Task CreateUserCv_EmptyResumeTitle_ReturnsBadRequest()
-        {
-            // Arrange
-            var userId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var request = new CreateUserCvRequest("");
-            var expectedResponse = new BaseResponseDto<CreateUserCvResponseDto>
-            {
-                Status = 400,
-                Message = "Resume title is required",
-                ResponseData = null
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<CreateUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var command = new CreateUserCvCommand(Guid.Empty, "My Resume");
 
             // Act
-            var result = await _controller.CreateUserCv(request);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
+            Assert.NotNull(result);
             Assert.Equal(400, result.Status);
-            Assert.Contains("Resume title is required", result.Message);
+            Assert.Equal("Owner ID is required.", result.Message);
             Assert.Null(result.ResponseData);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<CreateUserCvCommand>(cmd =>
-                    cmd.OwnerId == userId &&
-                    cmd.ResumeTitle == ""
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.AddAsync(It.IsAny<UserCv>()), Times.Never);
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Never);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task Handle_InvalidResumeTitle_ReturnsBadRequest(string resumeTitle)
+        {
+            // Arrange
+            var ownerId = Guid.NewGuid();
+            var command = new CreateUserCvCommand(ownerId, resumeTitle);
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("Resume title is required.", result.Message);
+            Assert.Null(result.ResponseData);
+
+            _resumeRepoMock.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _resumeRepoMock.Verify(r => r.AddAsync(It.IsAny<UserCv>()), Times.Never);
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Never);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Never);
         }
 
         [Fact]
-        public async Task CreateUserCv_HandlerException_ReturnsServerError()
+        public async Task Handle_RepositoryThrowsException_ReturnsServerError()
         {
             // Arrange
-            var userId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
+            var ownerId = Guid.NewGuid();
+            var command = new CreateUserCvCommand(ownerId, "My Resume");
 
-            var request = new CreateUserCvRequest("My Resume");
-            var expectedResponse = new BaseResponseDto<CreateUserCvResponseDto>
-            {
-                Status = 500,
-                Message = "Database connection failed",
-                ResponseData = null
-            };
+            SetupTransaction();
 
-            _senderMock.Setup(s => s.Send(It.IsAny<CreateUserCvCommand>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            _resumeRepoMock
+                .Setup(r => r.AddAsync(It.IsAny<UserCv>()))
+                .ThrowsAsync(new Exception("Database connection failed"));
 
             // Act
-            var result = await _controller.CreateUserCv(request);
+            var result = await _handler.Handle(command, CancellationToken.None);
 
             // Assert
+            Assert.NotNull(result);
             Assert.Equal(500, result.Status);
+            Assert.StartsWith("Failed to create user CV:", result.Message);
             Assert.Contains("Database connection failed", result.Message);
             Assert.Null(result.ResponseData);
 
-            _senderMock.Verify(s => s.Send(
-                It.IsAny<CreateUserCvCommand>(),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _unitOfWorkMock.Verify(u => u.CommitAsync(), Times.Never);
+            _unitOfWorkMock.Verify(u => u.RollbackAsync(), Times.Once);
         }
     }
 }

@@ -23,6 +23,16 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
         public async Task<BaseResponseDto<CreateUserCvResponseDto>> Handle(CreateUserCvCommand request, CancellationToken cancellationToken)
 		{
+            if (request.OwnerId == Guid.Empty)
+			{
+                return new BaseResponseDto<CreateUserCvResponseDto>
+				{
+					Status = 400,
+                    Message = "Owner ID is required.",
+					ResponseData = null
+				};
+			}
+
             if (string.IsNullOrWhiteSpace(request.ResumeTitle))
 			{
                 return new BaseResponseDto<CreateUserCvResponseDto>
