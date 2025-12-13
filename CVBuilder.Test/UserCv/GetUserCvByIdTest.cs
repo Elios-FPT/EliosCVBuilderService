@@ -1,13 +1,12 @@
-using CVBuilder.Contract.Shared;
-using CVBuilder.Web.Controllers;
-using MediatR;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Moq;
 using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CVBuilder.Contract.Shared;
+using CVBuilder.Core.Handler.UserCv.Query;
+using CVBuilder.Core.Interfaces;
+using Elios.CVBuilder.Domain.Models;
+using Moq;
 using Xunit;
 using static CVBuilder.Contract.UseCases.UserCv.Query;
 
@@ -15,33 +14,21 @@ namespace CVBuilder.Test
 {
     public class GetUserCvByIdTest
     {
-        private readonly Mock<ISender> _senderMock;
-        private readonly UserCvsController _controller;
+        private readonly Mock<IGenericRepository<UserCv>> _resumeRepoMock;
+        private readonly GetUserCvByIdQueryHandler _handler;
 
         public GetUserCvByIdTest()
         {
-            _senderMock = new Mock<ISender>();
-            _controller = new UserCvsController(_senderMock.Object);
-        }
-
-        private void SetupHttpContext(string userId)
-        {
-            var httpContext = new DefaultHttpContext();
-            httpContext.Request.Headers["X-Auth-Request-User"] = userId;
-            _controller.ControllerContext = new ControllerContext
-            {
-                HttpContext = httpContext
-            };
+            _resumeRepoMock = new Mock<IGenericRepository<UserCv>>();
+            _handler = new GetUserCvByIdQueryHandler(_resumeRepoMock.Object);
         }
 
         [Fact]
-        public async Task GetUserCv_ValidIdAndOwner_ReturnsSuccess()
+        public async Task Handle_ValidRequest_ReturnsSuccessWithJsonData()
         {
             // Arrange
-            var userId = Guid.NewGuid();
             var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
+            var userId = Guid.NewGuid();
             var jsonString = """
             {
                 "personalInfo": {
@@ -51,159 +38,272 @@ namespace CVBuilder.Test
                 }
             }
             """;
-            var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
-            var expectedResponse = new BaseResponseDto<JsonElement>
+            var existingCv = new UserCv
             {
-                Status = 200,
-                Message = "CV retrieved successfully",
-                ResponseData = jsonElement
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = jsonString,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
             };
 
-            _senderMock.Setup(s => s.Send(It.IsAny<GetUserCvByIdQuery>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ReturnsAsync(existingCv);
 
             // Act
-            var result = await _controller.GetUserCv(cvId);
+            var result = await _handler.Handle(query, CancellationToken.None);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(200, result.Status);
-            Assert.Equal("CV retrieved successfully", result.Message);
-            Assert.NotNull(result.ResponseData);
+            Assert.Equal("User CV retrieved successfully.", result.Message);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<GetUserCvByIdQuery>(q =>
-                    q.IdHeader == userId &&
-                    q.Id == cvId
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            var jsonElement = result.ResponseData;
+            Assert.True(jsonElement.TryGetProperty("personalInfo", out var personalInfo));
+            Assert.Equal("John", personalInfo.GetProperty("firstName").GetString());
+            Assert.Equal("Doe", personalInfo.GetProperty("lastName").GetString());
+            Assert.Equal("john@example.com", personalInfo.GetProperty("email").GetString());
+
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Once);
         }
 
         [Fact]
-        public async Task GetUserCv_ValidIdButNotOwner_ReturnsForbidden()
+        public async Task Handle_EmptyIdHeader_ReturnsBadRequest()
         {
             // Arrange
-            var userId = Guid.NewGuid();
             var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<JsonElement>
-            {
-                Status = 403,
-                Message = "You do not own this CV",
-                ResponseData = default
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<GetUserCvByIdQuery>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var query = new GetUserCvByIdQuery(Guid.Empty, cvId);
 
             // Act
-            var result = await _controller.GetUserCv(cvId);
+            var result = await _handler.Handle(query, CancellationToken.None);
 
             // Assert
-            Assert.Equal(403, result.Status);
-            Assert.Contains("You do not own this CV", result.Message);
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("User ID cannot be empty.", result.Message);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<GetUserCvByIdQuery>(q =>
-                    q.IdHeader == userId &&
-                    q.Id == cvId
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Never);
         }
 
         [Fact]
-        public async Task GetUserCv_NonExistentId_ReturnsNotFound()
+        public async Task Handle_EmptyId_ReturnsBadRequest()
         {
             // Arrange
             var userId = Guid.NewGuid();
-            var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<JsonElement>
-            {
-                Status = 404,
-                Message = "CV not found",
-                ResponseData = default
-            };
-
-            _senderMock.Setup(s => s.Send(It.IsAny<GetUserCvByIdQuery>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var query = new GetUserCvByIdQuery(userId, Guid.Empty);
 
             // Act
-            var result = await _controller.GetUserCv(cvId);
+            var result = await _handler.Handle(query, CancellationToken.None);
 
             // Assert
+            Assert.NotNull(result);
+            Assert.Equal(400, result.Status);
+            Assert.Equal("User CV ID cannot be empty.", result.Message);
+
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Never);
+        }
+
+        [Fact]
+        public async Task Handle_NonExistentCv_ReturnsNotFound()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ReturnsAsync((UserCv)null);
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
             Assert.Equal(404, result.Status);
-            Assert.Equal("CV not found", result.Message);
+            Assert.Equal("User CV not found.", result.Message);
 
-            _senderMock.Verify(s => s.Send(
-                It.Is<GetUserCvByIdQuery>(q =>
-                    q.IdHeader == userId &&
-                    q.Id == cvId
-                ),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Once);
         }
 
         [Fact]
-        public async Task GetUserCv_MissingHeader_ThrowsException()
+        public async Task Handle_NotOwner_ReturnsForbidden()
         {
             // Arrange
-            SetupHttpContext(null);
             var cvId = Guid.NewGuid();
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await _controller.GetUserCv(cvId)
-            );
-        }
-
-        [Fact]
-        public async Task GetUserCv_InvalidHeader_ThrowsException()
-        {
-            // Arrange
-            SetupHttpContext("not-a-guid");
-            var cvId = Guid.NewGuid();
-
-            // Act & Assert
-            await Assert.ThrowsAsync<FormatException>(
-                async () => await _controller.GetUserCv(cvId)
-            );
-        }
-
-        [Fact]
-        public async Task GetUserCv_HandlerException_ReturnsServerError()
-        {
-            // Arrange
             var userId = Guid.NewGuid();
-            var cvId = Guid.NewGuid();
-            SetupHttpContext(userId.ToString());
-
-            var expectedResponse = new BaseResponseDto<JsonElement>
+            var differentUserId = Guid.NewGuid();
+            var jsonString = """
             {
-                Status = 500,
-                Message = "Internal server error",
-                ResponseData = default
+                "personalInfo": {
+                    "firstName": "John"
+                }
+            }
+            """;
+
+            var existingCv = new UserCv
+            {
+                Id = cvId,
+                OwnerId = differentUserId, // Different owner
+                ResumeTitle = "My Resume",
+                Data = jsonString,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
             };
 
-            _senderMock.Setup(s => s.Send(It.IsAny<GetUserCvByIdQuery>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedResponse);
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ReturnsAsync(existingCv);
 
             // Act
-            var result = await _controller.GetUserCv(cvId);
+            var result = await _handler.Handle(query, CancellationToken.None);
 
             // Assert
-            Assert.Equal(500, result.Status);
-            Assert.Contains("Internal server error", result.Message);
+            Assert.NotNull(result);
+            Assert.Equal(403, result.Status);
+            Assert.Equal("You can only view your own resume.", result.Message);
 
-            _senderMock.Verify(s => s.Send(
-                It.IsAny<GetUserCvByIdQuery>(),
-                It.IsAny<CancellationToken>()
-            ), Times.Once());
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_EmptyData_ReturnsNotFound()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+
+            var existingCv = new UserCv
+            {
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = "", // Empty data
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
+            };
+
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ReturnsAsync(existingCv);
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(404, result.Status);
+            Assert.Equal("User CV body is empty.", result.Message);
+
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Once);
+        }
+
+        [Fact]
+        public async Task Handle_RepositoryThrowsException_ReturnsServerError()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ThrowsAsync(new Exception("Database connection failed"));
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(500, result.Status);
+            Assert.StartsWith("Failed to retrieve user CV:", result.Message);
+            Assert.Contains("Database connection failed", result.Message);
+        }
+
+        [Fact]
+        public async Task Handle_InvalidJsonData_ReturnsServerError()
+        {
+            // Arrange
+            var cvId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+
+            var existingCv = new UserCv
+            {
+                Id = cvId,
+                OwnerId = userId,
+                ResumeTitle = "My Resume",
+                Data = "invalid json {{{", // Invalid JSON
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
+                IsDeleted = false
+            };
+
+            var query = new GetUserCvByIdQuery(userId, cvId);
+
+            _resumeRepoMock
+                .Setup(r => r.GetOneAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                    null,
+                    null))
+                .ReturnsAsync(existingCv);
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(500, result.Status);
+            Assert.StartsWith("Failed to retrieve user CV:", result.Message);
+
+            _resumeRepoMock.Verify(r => r.GetOneAsync(
+                It.IsAny<System.Linq.Expressions.Expression<System.Func<UserCv, bool>>>(),
+                null,
+                null), Times.Once);
         }
     }
 }

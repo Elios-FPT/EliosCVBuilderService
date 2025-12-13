@@ -21,6 +21,16 @@ namespace CVBuilder.Core.Handler.UserCv.Command
 
         public async Task<BaseResponseDto<UpdateUserCvResponseDto>> Handle(UpdateUserCvCommand request, CancellationToken cancellationToken)
         {
+            if (request.IdHeader == Guid.Empty)
+            {
+                return new BaseResponseDto<UpdateUserCvResponseDto>
+                {
+                    Status = 400,
+                    Message = "User ID cannot be empty.",
+                    ResponseData = null
+                };
+            }
+
             if (request.Id == Guid.Empty)
             {
                 return new BaseResponseDto<UpdateUserCvResponseDto>
@@ -52,6 +62,16 @@ namespace CVBuilder.Core.Handler.UserCv.Command
                     {
                         Status = 404,
                         Message = "User CV not found.",
+                        ResponseData = null
+                    };
+                }
+
+                if (existingUserCv.OwnerId != request.IdHeader)
+                {
+                    return new BaseResponseDto<UpdateUserCvResponseDto>
+                    {
+                        Status = 403,
+                        Message = "You can only update your own resume.",
                         ResponseData = null
                     };
                 }

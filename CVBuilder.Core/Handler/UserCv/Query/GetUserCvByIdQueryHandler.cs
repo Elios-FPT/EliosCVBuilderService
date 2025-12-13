@@ -20,6 +20,16 @@ namespace CVBuilder.Core.Handler.UserCv.Query
 
         public async Task<BaseResponseDto<JsonElement>> Handle(GetUserCvByIdQuery request, CancellationToken cancellationToken)
         {
+            if (request.IdHeader == Guid.Empty)
+            {
+                return new BaseResponseDto<JsonElement>
+                {
+                    Status = 400,
+                    Message = "User ID cannot be empty.",
+                    ResponseData = default
+                };
+            }
+
             if (request.Id == Guid.Empty)
             {
                 return new BaseResponseDto<JsonElement>
@@ -45,12 +55,12 @@ namespace CVBuilder.Core.Handler.UserCv.Query
                     };
                 }
 
-                if(request.IdHeader != userCv.OwnerId)
+                if(userCv.OwnerId != request.IdHeader)
                 {
                     return new BaseResponseDto<JsonElement>
                     {
-                        Status = 404,
-                        Message = "You can only watch own resume.",
+                        Status = 403,
+                        Message = "You can only view your own resume.",
                         ResponseData = default
                     };
                 }

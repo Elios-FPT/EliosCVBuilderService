@@ -4,6 +4,7 @@ using CVBuilder.Contract.TransferObjects;
 using MediatR;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -14,11 +15,14 @@ namespace CVBuilder.Contract.UseCases.UserCv
     public static class Query
     {
         public record GetUserCvByIdQuery(
+            [Required]
             Guid IdHeader,
+            [Required]
             Guid Id
         ) : IQuery<BaseResponseDto<JsonElement>>;
 
         public record GetUserCvsQuery(
+            [Required]
             Guid UserId,
             int PageNumber = 1,
             int PageSize = 20

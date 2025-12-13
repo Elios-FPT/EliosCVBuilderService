@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CVBuilder.Contract\CVBuilder.Contract.csproj" />
-  </ItemGroup>
-
 </Project>
